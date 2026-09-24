@@ -2,7 +2,7 @@
 
 <img width="1361" height="956" alt="chocologWowki" src="https://github.com/user-attachments/assets/5a318b2c-33dd-479b-ba9b-2818d45c53d6" />
 
-Um sistema autônomo baseado em Arduino para monitoramento ambiental durante o transporte de chocolates entre a América do Sul e América do Norte. O projeto registra desvios críticos de temperatura, umidade e luminosidade, garantindo o controle de qualidade da carga por meio de armazenamento em memória não volátil (EEPROM) e alertas visuais/sonoros imediatos por meio de LEDs e Buzzer.
+Um sistema autônomo baseado em Arduino para monitoramento ambiental durante o transporte de chocolates no continente Americano. O projeto registra desvios críticos de temperatura, umidade e luminosidade, garantindo o controle de qualidade da carga por meio de armazenamento em memória não volátil (EEPROM) e alertas visuais/sonoros imediatos por meio de LEDs e Buzzer.
 
 ## 🛠️ Hardware Necessário
 
@@ -61,3 +61,13 @@ O alarme disparará imediatamente se os sensores detectarem valores fora das rig
 
 ### 4. Leitura do Histórico (Logs)
 Para auditar o controle de qualidade da carga ao final da viagem, leia o histórico utilizando a própria IHM. Durante o monitoramento normal, pressione o botão **OK**. O display exibirá os erros salvos cronologicamente a partir da EEPROM. A primeira linha mostra o número do registro e o timestamp. A segunda linha exibe as condições climáticas gravadas no momento da infração. Use os botões de navegação para percorrer os logs, e o botão OK para sair.
+
+## ⚙️ Modificando os Parâmetros (Para Desenvolvedores)
+Se precisar alterar as margens de tolerância do chocolate, modifique as seguintes variáveis no escopo global do arquivo `.ino`:
+
+```cpp
+float trigger_t_min = 20.0;
+float trigger_t_max = 30.0;
+float trigger_u_min = 30.0;
+float trigger_u_max = 60.0;
+int trigger_l_max = 20;
