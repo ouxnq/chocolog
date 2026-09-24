@@ -202,23 +202,24 @@ void loop() {
     // ---------------------------------------------------------
     if (alarmeAtivo) {
         digitalWrite(LED_VERDE_PIN, LOW);
+        digitalWrite(LED_VERM_PIN, HIGH); // Mantém o LED de alerta aceso direto
 
         lcd.setCursor(0, 0); lcd.print(telaAlarmeLinha1);
         lcd.setCursor(0, 1); lcd.print(telaAlarmeLinha2);
 
-        if (millis() - tempoBuzzer >= 500) {
-            tempoBuzzer = millis();
-            estadoBuzzer = !estadoBuzzer;
-            digitalWrite(BUZZER_PIN, estadoBuzzer ? HIGH : LOW);
-            digitalWrite(LED_VERM_PIN, estadoBuzzer ? HIGH : LOW);
-        }
+        // Gera um som contínuo e estridente em 3000 Hz
+        tone(BUZZER_PIN, 3000); 
 
+        // Trava de desligamento com filtro para o botão físico
         if (digitalRead(BTN_OK) == LOW) {
             alarmeAtivo = false;
-            digitalWrite(BUZZER_PIN, LOW);
+            noTone(BUZZER_PIN); // Desliga o som imediatamente
             digitalWrite(LED_VERM_PIN, LOW);
+            
             lcd.clear();
             lcd.print(txtAlarmeOff[idioma]);
+            
+            while(digitalRead(BTN_OK) == LOW) delay(10); // Trava até soltar o botão
             delay(1500);
             lcd.clear();
         }
@@ -350,13 +351,19 @@ int ajustarValorDisplay(const char* titulo, int valorInicial, int minVal, int ma
         lcd.setCursor(0, 1); lcd.print("> "); lcd.print(valor); lcd.print("    ");
 
         if (digitalRead(BTN_UP) == LOW) {
-            valor++; if (valor > maxVal) valor = minVal; delay(200);
+            valor++; if (valor > maxVal) valor = minVal; 
+            while(digitalRead(BTN_UP) == LOW) delay(10); // Trava até soltar
+            delay(50); // Filtro de ruído físico
         }
         if (digitalRead(BTN_DOWN) == LOW) {
-            valor--; if (valor < minVal) valor = maxVal; delay(200);
+            valor--; if (valor < minVal) valor = maxVal; 
+            while(digitalRead(BTN_DOWN) == LOW) delay(10); // Trava até soltar
+            delay(50); // Filtro de ruído físico
         }
         if (digitalRead(BTN_OK) == LOW) {
-            confirmado = true; delay(300);
+            confirmado = true; 
+            while(digitalRead(BTN_OK) == LOW) delay(10); // Trava até soltar
+            delay(50); // Filtro de ruído físico
         }
     }
     return valor;
@@ -405,16 +412,29 @@ void exibirLogsLCD() {
         
         DateTime dt = DateTime(t);
         
-        char linha1[17]; char linha2[17];
+        // AUMENTO DE BUFFER: de 17 para 24 para evitar Overflow na RAM
+        char linha1[24]; char linha2[24]; 
         sprintf(linha1, "%02d/%02d %02d/%02d %02dh", (indexAtual+1), totalLogs, dt.day(), dt.month(), dt.hour());
         sprintf(linha2, "T:%d %s%d %s%d", (tempInt/100), txtUmidTag[idioma], (humiInt/100), txtLuzTag[idioma], luz);
 
         lcd.setCursor(0, 0); lcd.print(linha1);
         lcd.setCursor(0, 1); lcd.print(linha2);
 
-        if (digitalRead(BTN_UP) == LOW) { indexAtual++; if (indexAtual >= totalLogs) indexAtual = 0; delay(300); }
-        if (digitalRead(BTN_DOWN) == LOW) { indexAtual--; if (indexAtual < 0) indexAtual = totalLogs - 1; delay(300); }
-        if (digitalRead(BTN_OK) == LOW) { sair = true; delay(300); }
+        if (digitalRead(BTN_UP) == LOW) { 
+            indexAtual++; if (indexAtual >= totalLogs) indexAtual = 0; 
+            while(digitalRead(BTN_UP) == LOW) delay(10); // Trava até soltar
+            delay(50); // Filtro de ruído físico
+        }
+        if (digitalRead(BTN_DOWN) == LOW) { 
+            indexAtual--; if (indexAtual < 0) indexAtual = totalLogs - 1; 
+            while(digitalRead(BTN_DOWN) == LOW) delay(10); // Trava até soltar
+            delay(50); // Filtro de ruído físico
+        }
+        if (digitalRead(BTN_OK) == LOW) { 
+            sair = true; 
+            while(digitalRead(BTN_OK) == LOW) delay(10); // Trava até soltar
+            delay(50); // Filtro de ruído físico
+        }
     }
 
     lcd.clear(); lcd.setCursor(0,0); lcd.print(txtSaindo[idioma]);
