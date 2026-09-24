@@ -46,8 +46,8 @@ unsigned long tempoAnteriorLCD = 0;
 bool mostraRelogio = true;
 
 bool alarmeAtivo = false;
-char telaAlarmeLinha1[17];
-char telaAlarmeLinha2[17];
+char telaAlarmeLinha1[24];
+char telaAlarmeLinha2[24];
 unsigned long tempoBuzzer = 0;
 bool estadoBuzzer = false;
 
