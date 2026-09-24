@@ -6,11 +6,11 @@
 
 // --- Configurações de Pinos ---
 #define DHTPIN 2
-#define DHTTYPE DHT22
+#define DHTTYPE DHT11
 #define LDR_PIN A0
 #define BUZZER_PIN 8
-#define LED_VERDE_PIN 9
-#define LED_VERM_PIN 10
+#define LED_VERDE_PIN 10
+#define LED_VERM_PIN 9
 #define BTN_UP 5
 #define BTN_DOWN 6
 #define BTN_OK 7   
