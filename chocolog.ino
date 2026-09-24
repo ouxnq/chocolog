@@ -296,6 +296,11 @@ void loop() {
 // ==========================================
 
 void executarMenuConfiguracao() {
+    // Trava de liberação: aguarda o usuário soltar o botão OK antes de iniciar
+    while (digitalRead(BTN_OK) == LOW) {
+        delay(10);
+    }
+
     bool confirmado = false;
     while (!confirmado) {
         lcd.setCursor(0, 0); lcd.print("Language/Idioma:");
