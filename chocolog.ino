@@ -9,6 +9,8 @@
 #define DHTTYPE DHT22
 #define LDR_PIN A0
 #define BUZZER_PIN 8
+#define LED_VERDE_PIN 9
+#define LED_VERM_PIN 10
 #define BTN_UP 5
 #define BTN_DOWN 6
 #define BTN_OK 7   
@@ -27,16 +29,19 @@ int lastLoggedMinute = -1;
 
 #define ADDR_MAGIC_BYTE 1000
 #define ADDR_LANGUAGE   1001
+#define ADDR_TIMEZONE   1002
 
-// --- Triggers (Limites Aceitáveis) ---
-float trigger_t_min = 20.0;
-float trigger_t_max = 30.0;
+// --- Triggers (Limites Exigidos pelo Projeto) ---
+float trigger_t_min = 15.0;
+float trigger_t_max = 25.0;
 float trigger_u_min = 30.0;
-float trigger_u_max = 60.0;
-int trigger_l_max = 20;
+float trigger_u_max = 50.0;
+int trigger_l_max = 30;
 
 // --- Variáveis Globais ---
 int idioma = 0; // 0 = PT, 1 = EN, 2 = ES
+int fuso = -3;  // UTC
+
 unsigned long tempoAnteriorLCD = 0;
 bool mostraRelogio = true;
 
@@ -47,9 +52,18 @@ unsigned long tempoBuzzer = 0;
 bool estadoBuzzer = false;
 
 // ==========================================
+// DESENHO CUSTOMIZADO: ANIMAÇÃO DE CHOCOLATE
+// ==========================================
+byte chocNormal[8] = { B11111, B10001, B10101, B10001, B10101, B10001, B10001, B11111 };
+byte chocDestaque[8] = { B11111, B11111, B11011, B11111, B11011, B11111, B11111, B11111 };
+byte chocQuebraDireita[8] = { B11110, B10010, B10111, B10010, B10110, B10011, B10010, B11110 };
+byte chocQuebraEsquerda[8] = { B01111, B01001, B11101, B01001, B01101, B11001, B01001, B01111 };
+
+// ==========================================
 // DICIONÁRIO MULTI-IDIOMA (0 = PT, 1 = EN, 2 = ES)
 // ==========================================
 const char* txtIdioma[] = {"Portugues", "English", "Espanol"};
+const char* txtMenuFuso[] = {"Fuso Horario UTC", "Timezone UTC", "Zona Horaria UTC"};
 const char* txtIniciando[] = {"Iniciando Log...", "Starting Log...", "Iniciando Log..."};
 
 const char* txtData[] = {"DATA: ", "DATE: ", "FECHA:"};
@@ -62,37 +76,36 @@ const char* txtAlarmeOff[] = {"Alarme Desligado", "Alarm Turned Off", "Alarma Ap
 const char* txtSemLogs[] = {"Nenhum Erro", "No Errors Logged", "Sin Errores"};
 const char* txtSaindo[] = {"Saindo...", "Exiting...", "Saliendo..."};
 
-// Textos do Menu de Data/Hora
 const char* txtConfigAno[] = {"Ano (2024+):", "Year (2024+):", "Ano (2024+):"};
 const char* txtConfigMes[] = {"Mes (1-12):", "Month (1-12):", "Mes (1-12):"};
 const char* txtConfigDia[] = {"Dia (1-31):", "Day (1-31):", "Dia (1-31):"};
 const char* txtConfigHora[] = {"Hora (0-23):", "Hour (0-23):", "Hora (0-23):"};
 const char* txtConfigMin[] = {"Minuto (0-59):", "Minute (0-59):", "Minuto (0-59):"};
-const char* txtAperteOK[] = {"Hold OK = Config"};
+
 
 // ==========================================
-// ANIMACAO INICIAL - BARRA DE CHOCOLATE
+// FUNÇÕES DA ANIMAÇÃO DE BOOT
 // ==========================================
-byte chocNormal[8] = {
-    B11111, B10001, B10101, B10001, B10101, B10001, B10001, B11111
-};
-byte chocDestaque[8] = {
-    B11111, B11111, B11011, B11111, B11011, B11111, B11111, B11111
-};
-byte chocQuebraDireita[8] = {
-    B11110, B10010, B10111, B10010, B10110, B10011, B10010, B11110
-};
-byte chocQuebraEsquerda[8] = {
-    B01111, B01001, B11101, B01001, B01101, B11001, B01001, B01111
-};
+
+// Função que substitui o delay padrão e fica "escutando" o botão OK
+void delayEChecaBotao(int ms, bool &flagMenu) {
+    unsigned long inicio = millis();
+    while (millis() - inicio < ms) {
+        if (digitalRead(BTN_OK) == LOW) {
+            flagMenu = true;
+        }
+        delay(10);
+    }
+}
 
 void desenharChocolateInteiro(byte colunaInicial, bool destacarUltimaBarra) {
     lcd.clear();
     lcd.setCursor(colunaInicial, 0);
-    lcd.write((uint8_t)0); lcd.write((uint8_t)0); lcd.write((uint8_t)0);
+    lcd.write((uint8_t)0); lcd.write((uint8_t)0); lcd.write((uint8_t)0); 
     lcd.write((uint8_t)(destacarUltimaBarra ? 1 : 0));
+
     lcd.setCursor(colunaInicial, 1);
-    lcd.write((uint8_t)0); lcd.write((uint8_t)0); lcd.write((uint8_t)0);
+    lcd.write((uint8_t)0); lcd.write((uint8_t)0); lcd.write((uint8_t)0); 
     lcd.write((uint8_t)(destacarUltimaBarra ? 1 : 0));
 }
 
@@ -100,40 +113,41 @@ void desenharChocolateSeparado(byte colunaInicial, byte colunaPedaco) {
     lcd.clear();
     lcd.setCursor(colunaInicial, 0);
     lcd.write((uint8_t)0); lcd.write((uint8_t)0); lcd.write((uint8_t)2);
+
     lcd.setCursor(colunaInicial, 1);
     lcd.write((uint8_t)0); lcd.write((uint8_t)0); lcd.write((uint8_t)2);
-    
+
     lcd.setCursor(colunaPedaco, 0); lcd.write((uint8_t)3);
     lcd.setCursor(colunaPedaco, 1); lcd.write((uint8_t)3);
 }
 
-void exibirAnimacaoChocolate() {
+void exibirAnimacaoChocolate(bool &forcarMenu) {
     lcd.createChar(0, chocNormal);
     lcd.createChar(1, chocDestaque);
     lcd.createChar(2, chocQuebraDireita);
     lcd.createChar(3, chocQuebraEsquerda);
-    const byte inicio = 6; 
 
-    desenharChocolateInteiro(inicio, false); delay(500);
-    desenharChocolateInteiro(inicio, true); delay(220);
-    desenharChocolateInteiro(inicio, false); delay(160);
-    desenharChocolateInteiro(inicio, true); delay(220);
+    const byte inicio = 5; // Centralizado na tela de 16 colunas
 
-    desenharChocolateSeparado(inicio, inicio + 3); delay(180);
-    desenharChocolateSeparado(inicio, inicio + 4); delay(180);
-    desenharChocolateSeparado(inicio, inicio + 5); delay(180);
-    desenharChocolateSeparado(inicio, inicio + 6); delay(450);
+    desenharChocolateInteiro(inicio, false); delayEChecaBotao(500, forcarMenu);
+    desenharChocolateInteiro(inicio, true);  delayEChecaBotao(220, forcarMenu);
+    desenharChocolateInteiro(inicio, false); delayEChecaBotao(160, forcarMenu);
+    desenharChocolateInteiro(inicio, true);  delayEChecaBotao(220, forcarMenu);
 
-    desenharChocolateSeparado(inicio, inicio + 5); delay(110);
-    desenharChocolateSeparado(inicio, inicio + 6); delay(300);
-    lcd.clear();
+    desenharChocolateSeparado(inicio, inicio + 3); delayEChecaBotao(180, forcarMenu);
+    desenharChocolateSeparado(inicio, inicio + 4); delayEChecaBotao(180, forcarMenu);
+    desenharChocolateSeparado(inicio, inicio + 5); delayEChecaBotao(180, forcarMenu);
+    desenharChocolateSeparado(inicio, inicio + 6); delayEChecaBotao(450, forcarMenu);
+
+    desenharChocolateSeparado(inicio, inicio + 5); delayEChecaBotao(110, forcarMenu);
+    desenharChocolateSeparado(inicio, inicio + 6); delayEChecaBotao(300, forcarMenu);
 }
 
-// ==========================================
-// INICIALIZAÇÃO
-// ==========================================
+
 void setup() {
     pinMode(BUZZER_PIN, OUTPUT);
+    pinMode(LED_VERDE_PIN, OUTPUT);
+    pinMode(LED_VERM_PIN, OUTPUT);
     pinMode(BTN_UP, INPUT_PULLUP);
     pinMode(BTN_DOWN, INPUT_PULLUP);
     pinMode(BTN_OK, INPUT_PULLUP);
@@ -142,25 +156,38 @@ void setup() {
     lcd.init();
     lcd.backlight();
     
-    // Executa a animação de boot antes de checar as configurações
-    exibirAnimacaoChocolate();
-    
     if (!RTC.begin()) {
         lcd.print("Erro no RTC!");
         while (1); 
     }
 
+    bool forcarMenu = false;
+    
+    // 1. Toca a animação do chocolate
+    exibirAnimacaoChocolate(forcarMenu);
+
+    // 2. Tela "ChocoLog" separada
+    lcd.clear();
+    lcd.setCursor(1, 0); // Centraliza a escrita
+    lcd.write((uint8_t)0); 
+    lcd.print(" ChocoLog ");
+    lcd.write((uint8_t)0); 
+    delayEChecaBotao(1500, forcarMenu); // Aguarda 1.5s permitindo botão
+
+    // 3. Tela de aviso do Menu separada
+    lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print(txtAperteOK[0]); 
-    delay(2500); 
+    lcd.print("Hold OK = Menu  ");
+    delayEChecaBotao(1500, forcarMenu); // Aguarda mais 1.5s permitindo botão
 
     byte magicByte = EEPROM.read(ADDR_MAGIC_BYTE);
-    bool forcarMenu = (digitalRead(BTN_OK) == LOW); 
     
+    // Verifica se precisa abrir o menu de configuração
     if (magicByte != 0xAA || forcarMenu || !RTC.isrunning()) {
         executarMenuConfiguracao();
     } else {
         idioma = EEPROM.read(ADDR_LANGUAGE);
+        fuso = EEPROM.read(ADDR_TIMEZONE) - 12; 
     }
 
     lcd.clear();
@@ -171,9 +198,11 @@ void setup() {
 
 void loop() {
     // ---------------------------------------------------------
-    // ESTADO 1: ALARME ATIVADO (SISTEMA TRAVADO)
+    // ESTADO 1: ALARME ATIVADO
     // ---------------------------------------------------------
     if (alarmeAtivo) {
+        digitalWrite(LED_VERDE_PIN, LOW);
+
         lcd.setCursor(0, 0); lcd.print(telaAlarmeLinha1);
         lcd.setCursor(0, 1); lcd.print(telaAlarmeLinha2);
 
@@ -181,11 +210,13 @@ void loop() {
             tempoBuzzer = millis();
             estadoBuzzer = !estadoBuzzer;
             digitalWrite(BUZZER_PIN, estadoBuzzer ? HIGH : LOW);
+            digitalWrite(LED_VERM_PIN, estadoBuzzer ? HIGH : LOW);
         }
 
         if (digitalRead(BTN_OK) == LOW) {
             alarmeAtivo = false;
             digitalWrite(BUZZER_PIN, LOW);
+            digitalWrite(LED_VERM_PIN, LOW);
             lcd.clear();
             lcd.print(txtAlarmeOff[idioma]);
             delay(1500);
@@ -197,19 +228,22 @@ void loop() {
     // ---------------------------------------------------------
     // ESTADO 2: MONITORAMENTO NORMAL
     // ---------------------------------------------------------
+    digitalWrite(LED_VERM_PIN, LOW); 
+
+    // Botão OK entra no Histórico
     if (digitalRead(BTN_OK) == LOW) {
         delay(300); 
         exibirLogsLCD(); 
         lcd.clear(); 
     }
 
-    DateTime now = RTC.now(); 
+    DateTime tempoReal = RTC.now();
+    uint32_t unixAjustado = tempoReal.unixtime() + (fuso * 3600);
+    DateTime now = DateTime(unixAjustado); 
     
     float temperaturaAtual = dht.readTemperature();
     float umidadeAtual = dht.readHumidity();
     int leituraLDR = analogRead(LDR_PIN);
-    
-    // CORREÇÃO: Escala invertida para acompanhar o hardware do LDR (100 a 0)
     int luminosidadeAtual = map(leituraLDR, 0, 1023, 100, 0); 
 
     if (now.minute() != lastLoggedMinute) {
@@ -236,6 +270,8 @@ void loop() {
         mostraRelogio = !mostraRelogio; 
         lcd.clear();
         
+        digitalWrite(LED_VERDE_PIN, mostraRelogio ? HIGH : LOW);
+
         if (mostraRelogio) {
             char bufferData[17];
             char bufferHora[17];
@@ -254,6 +290,7 @@ void loop() {
     }
 }
 
+
 // ==========================================
 // FUNÇÕES AUXILIARES E MENUS
 // ==========================================
@@ -269,6 +306,18 @@ void executarMenuConfiguracao() {
         if (digitalRead(BTN_OK) == LOW) { confirmado = true; delay(300); }
     }
 
+    confirmado = false;
+    lcd.clear();
+    while (!confirmado) {
+        lcd.setCursor(0, 0); lcd.print(txtMenuFuso[idioma]);
+        lcd.setCursor(0, 1); 
+        lcd.print("> "); if (fuso > 0) lcd.print("+"); lcd.print(fuso); lcd.print("   ");
+
+        if (digitalRead(BTN_UP) == LOW) { fuso++; if(fuso>12) fuso=12; delay(200); }
+        if (digitalRead(BTN_DOWN) == LOW) { fuso--; if(fuso<-12) fuso=-12; delay(200); }
+        if (digitalRead(BTN_OK) == LOW) { confirmado = true; delay(300); }
+    }
+
     int ano = ajustarValorDisplay(txtConfigAno[idioma], 2024, 2024, 2050);
     int mes = ajustarValorDisplay(txtConfigMes[idioma], 1, 1, 12);
     int dia = ajustarValorDisplay(txtConfigDia[idioma], 1, 1, 31);
@@ -276,8 +325,13 @@ void executarMenuConfiguracao() {
     int min = ajustarValorDisplay(txtConfigMin[idioma], 0, 0, 59);
 
     EEPROM.write(ADDR_LANGUAGE, idioma);
+    EEPROM.write(ADDR_TIMEZONE, fuso + 12); 
     EEPROM.write(ADDR_MAGIC_BYTE, 0xAA);
-    RTC.adjust(DateTime(ano, mes, dia, hora, min, 0));
+
+    DateTime horaLocal(ano, mes, dia, hora, min, 0);
+    uint32_t horaUTC = horaLocal.unixtime() - (fuso * 3600);
+    RTC.adjust(DateTime(horaUTC));
+
     lcd.clear();
 }
 
