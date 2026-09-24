@@ -1,5 +1,7 @@
 # ChocoLog - Data Logger de Transporte 🍫
 
+<img width="1361" height="956" alt="chocologWowki" src="https://github.com/user-attachments/assets/5a318b2c-33dd-479b-ba9b-2818d45c53d6" />
+
 Um sistema autônomo baseado em Arduino para monitoramento ambiental durante o transporte de chocolates. O projeto registra desvios críticos de temperatura, umidade e luminosidade, garantindo o controle de qualidade da carga por meio de armazenamento em memória não volátil (EEPROM) e alertas visuais/sonoros.
 
 ## 🛠️ Hardware Necessário
