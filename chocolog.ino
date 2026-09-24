@@ -422,18 +422,20 @@ void exibirLogsLCD() {
 
         if (digitalRead(BTN_UP) == LOW) { 
             indexAtual++; if (indexAtual >= totalLogs) indexAtual = 0; 
-            while(digitalRead(BTN_UP) == LOW) delay(10); // Trava até soltar
-            delay(50); // Filtro de ruído físico
+            lcd.clear(); // <--- Limpa os "fantasmas" antigos antes de desenhar o próximo
+            while(digitalRead(BTN_UP) == LOW) delay(10); 
+            delay(50); 
         }
         if (digitalRead(BTN_DOWN) == LOW) { 
             indexAtual--; if (indexAtual < 0) indexAtual = totalLogs - 1; 
-            while(digitalRead(BTN_DOWN) == LOW) delay(10); // Trava até soltar
-            delay(50); // Filtro de ruído físico
+            lcd.clear(); // <--- Limpa os "fantasmas" antigos antes de desenhar o próximo
+            while(digitalRead(BTN_DOWN) == LOW) delay(10); 
+            delay(50); 
         }
         if (digitalRead(BTN_OK) == LOW) { 
             sair = true; 
-            while(digitalRead(BTN_OK) == LOW) delay(10); // Trava até soltar
-            delay(50); // Filtro de ruído físico
+            while(digitalRead(BTN_OK) == LOW) delay(10); 
+            delay(50); 
         }
     }
 
