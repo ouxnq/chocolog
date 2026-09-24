@@ -412,9 +412,10 @@ void exibirLogsLCD() {
         
         DateTime dt = DateTime(t);
         
-        // AUMENTO DE BUFFER: de 17 para 24 para evitar Overflow na RAM
         char linha1[24]; char linha2[24]; 
-        sprintf(linha1, "%02d/%02d %02d/%02d %02dh", (indexAtual+1), totalLogs, dt.day(), dt.month(), dt.hour());
+        
+        // Nova formatação: L:01 25/12 14:30 (Exatos 16 caracteres)
+        sprintf(linha1, "L:%02d %02d/%02d %02d:%02d", (indexAtual+1), dt.day(), dt.month(), dt.hour(), dt.minute());
         sprintf(linha2, "T:%d %s%d %s%d", (tempInt/100), txtUmidTag[idioma], (humiInt/100), txtLuzTag[idioma], luz);
 
         lcd.setCursor(0, 0); lcd.print(linha1);
@@ -422,13 +423,13 @@ void exibirLogsLCD() {
 
         if (digitalRead(BTN_UP) == LOW) { 
             indexAtual++; if (indexAtual >= totalLogs) indexAtual = 0; 
-            lcd.clear(); // <--- Limpa os "fantasmas" antigos antes de desenhar o próximo
+            lcd.clear(); 
             while(digitalRead(BTN_UP) == LOW) delay(10); 
             delay(50); 
         }
         if (digitalRead(BTN_DOWN) == LOW) { 
             indexAtual--; if (indexAtual < 0) indexAtual = totalLogs - 1; 
-            lcd.clear(); // <--- Limpa os "fantasmas" antigos antes de desenhar o próximo
+            lcd.clear(); 
             while(digitalRead(BTN_DOWN) == LOW) delay(10); 
             delay(50); 
         }
