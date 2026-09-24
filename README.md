@@ -61,6 +61,12 @@ Para auditar a carga ao final da viagem, você pode ler o histórico de duas man
 3. Envie a letra `L` (maiúscula ou minúscula).
 4. O sistema imprimirá uma tabela formatada com todos os logs, facilitando a cópia para planilhas.
 
+## 🔬 Especificações Técnicas e Precisão dos Sensores
+* **Temperatura (DHT11):** Medição em Graus Celsius (°C). Faixa de leitura: 0-50°C. Precisão de ±2.0 °C.
+* **Umidade (DHT11):** Medição em Percentual Relativo (%). Faixa de leitura: 20-90%. Precisão de ±5.0 %.
+* **Luminosidade (LDR):** Medição em Percentual Estimado (0 a 100%). Conversão analógica baseada em divisor de tensão com resistor de 10kΩ (Resolução ADC de 10 bits).
+* **Triggers Configuradas:** Temperatura (15 a 25°C), Umidade (30 a 50%), Luminosidade (0 a 30%).
+
 ## ⚙️ Modificando os Parâmetros (Para Desenvolvedores)
 Se precisar alterar as margens de tolerância do chocolate, modifique as seguintes variáveis no escopo global do arquivo `.ino`:
 
