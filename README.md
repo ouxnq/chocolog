@@ -2,8 +2,6 @@
 
 <img width="1550" height="900" alt="chocologWowki" src="https://github.com/user-attachments/assets/7e78d2f3-aa2b-421c-a89a-a1aa79723942" />
 
-
-
 Um sistema autônomo baseado em Arduino para monitoramento ambiental durante o transporte de chocolates no continente Americano. O projeto registra desvios críticos de temperatura, umidade e luminosidade, garantindo o controle de qualidade da carga por meio de armazenamento em memória não volátil (EEPROM) e alertas visuais/sonoros imediatos por meio de LEDs e Buzzer.
 
 ## 🛠️ Hardware Necessário
