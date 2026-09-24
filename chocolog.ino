@@ -69,7 +69,7 @@ const char* txtIniciando[] = {"Iniciando Log...", "Starting Log...", "Iniciando 
 const char* txtData[] = {"DATA: ", "DATE: ", "FECHA:"};
 const char* txtHora[] = {"HORA: ", "TIME: ", "HORA: "};
 const char* txtUmidTag[] = {"U:", "H:", "H:"};     
-const char* txtLuzTag[]  = {"Luz:", "Lgt:", "Luz:"}; 
+const char* txtLuzTag[]  = {"L:", "L:", "L:"};
 
 const char* txtAlerta[] = {"ALERTA! ", "ALERT!  ", "ALERTA! "};
 const char* txtAlarmeOff[] = {"Alarme Desligado", "Alarm Turned Off", "Alarma Apagada  "};
@@ -274,8 +274,8 @@ void loop() {
         digitalWrite(LED_VERDE_PIN, mostraRelogio ? HIGH : LOW);
 
         if (mostraRelogio) {
-            char bufferData[17];
-            char bufferHora[17];
+            char bufferData[24];
+            char bufferHora[24];
             sprintf(bufferData, "%s%02d/%02d/%04d", txtData[idioma], now.day(), now.month(), now.year());
             sprintf(bufferHora, "%s%02d:%02d:%02d", txtHora[idioma], now.hour(), now.minute(), now.second());
             lcd.setCursor(0, 0); lcd.print(bufferData);
