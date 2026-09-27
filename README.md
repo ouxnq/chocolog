@@ -71,3 +71,35 @@ float trigger_t_max = 30.0;
 float trigger_u_min = 30.0;
 float trigger_u_max = 60.0;
 int trigger_l_max = 20;
+```
+
+## 🧹 Reset de Fábrica (Apagar Memória EEPROM)
+
+Para apagar todos os logs de erro gravados e redefinir as configurações iniciais (Idioma e Data/Hora), você pode formatar a memória do Arduino. Existem duas formas de realizar este procedimento:
+
+### Opção 1: Limpeza via Monitor Serial (Modo Desenvolvedor)
+Esta é a forma mais rápida de limpar a memória durante os testes sem precisar enviar um novo código para a placa.
+
+1. Adicione a função abaixo no final do seu arquivo `.ino`:
+```cpp
+void formatarEEPROM() {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Formatando...");
+
+    // Preenche toda a memória (1024 bytes no Uno) com espaço vazio (0xFF)
+    for (int i = 0; i < EEPROM.length(); i++) {
+        EEPROM.write(i, 0xFF);
+    }
+
+    currentAddress = 0; // Reinicia o ponteiro de gravação dos logs
+
+    lcd.setCursor(0, 1);
+    lcd.print("Concluido!");
+    delay(2000);
+    
+    // Reinicia a placa via software para forçar a reconfiguração inicial
+    void(* resetFunc) (void) = 0;
+    resetFunc(); 
+}
+```
