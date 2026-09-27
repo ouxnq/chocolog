@@ -33,10 +33,10 @@ int lastLoggedMinute = -1;
 
 // --- Triggers (Limites Exigidos pelo Projeto) ---
 float trigger_t_min = 15.0;
-float trigger_t_max = 25.0;
-float trigger_u_min = 30.0;
-float trigger_u_max = 50.0;
-int trigger_l_max = 30;
+float trigger_t_max = 22.0;
+float trigger_u_min = 45.0;
+float trigger_u_max = 60.0;
+int trigger_l_max = 50;
 
 // --- Variáveis Globais ---
 int idioma = 0; // 0 = PT, 1 = EN, 2 = ES
