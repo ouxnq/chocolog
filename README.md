@@ -66,11 +66,11 @@ Para auditar o controle de qualidade da carga ao final da viagem, leia o histór
 Se precisar alterar as margens de tolerância do chocolate, modifique as seguintes variáveis no escopo global do arquivo `.ino`:
 
 ```cpp
-float trigger_t_min = 20.0;
-float trigger_t_max = 30.0;
-float trigger_u_min = 30.0;
+float trigger_t_min = 15.0;
+float trigger_t_max = 22.0;
+float trigger_u_min = 45.0;
 float trigger_u_max = 60.0;
-int trigger_l_max = 20;
+int trigger_l_max = 50;
 ```
 
 ## 🧹 Reset de Fábrica (Apagar Memória EEPROM)
