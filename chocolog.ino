@@ -30,6 +30,7 @@ int lastLoggedMinute = -1;
 #define ADDR_MAGIC_BYTE 1000
 #define ADDR_LANGUAGE   1001
 #define ADDR_TIMEZONE   1002
+#define ADDR_TEMP_UNIT  1003 // NOVO: Endereço da unidade de temperatura
 
 // --- Triggers (Limites Exigidos pelo Projeto) ---
 float trigger_t_min = 15.0;
@@ -41,6 +42,7 @@ int trigger_l_max = 50;
 // --- Variáveis Globais ---
 int idioma = 0; // 0 = PT, 1 = EN, 2 = ES
 int fuso = -3;  // UTC
+int unidadeTemp = 0; // 0 = Celsius, 1 = Fahrenheit // NOVO
 
 unsigned long tempoAnteriorLCD = 0;
 bool mostraRelogio = true;
@@ -64,6 +66,8 @@ byte chocQuebraEsquerda[8] = { B01111, B01001, B11101, B01001, B01101, B11001, B
 // ==========================================
 const char* txtIdioma[] = {"Portugues", "English", "Espanol"};
 const char* txtMenuFuso[] = {"Fuso Horario UTC", "Timezone UTC", "Zona Horaria UTC"};
+const char* txtMenuTemp[] = {"Medida de Temp.", "Temp. Unit", "Medida Temp."}; // NOVO
+const char* txtUnidade[] = {"Celsius (C)", "Fahrenheit(F)"}; // NOVO
 const char* txtIniciando[] = {"Iniciando Log...", "Starting Log...", "Iniciando Log..."};
 
 const char* txtData[] = {"DATA: ", "DATE: ", "FECHA:"};
@@ -87,7 +91,6 @@ const char* txtConfigMin[] = {"Minuto (0-59):", "Minute (0-59):", "Minuto (0-59)
 // FUNÇÕES DA ANIMAÇÃO DE BOOT
 // ==========================================
 
-// Função que substitui o delay padrão e fica "escutando" o botão OK
 void delayEChecaBotao(int ms, bool &flagMenu) {
     unsigned long inicio = millis();
     while (millis() - inicio < ms) {
@@ -127,7 +130,7 @@ void exibirAnimacaoChocolate(bool &forcarMenu) {
     lcd.createChar(2, chocQuebraDireita);
     lcd.createChar(3, chocQuebraEsquerda);
 
-    const byte inicio = 5; // Centralizado na tela de 16 colunas
+    const byte inicio = 5;
 
     desenharChocolateInteiro(inicio, false); delayEChecaBotao(500, forcarMenu);
     desenharChocolateInteiro(inicio, true);  delayEChecaBotao(220, forcarMenu);
@@ -161,6 +164,17 @@ void setup() {
         while (1); 
     }
 
+    // --- RECUPERAÇÃO DO PONTEIRO DA EEPROM ---
+    currentAddress = 0;
+    for (int i = startAddress; i < endAddress; i += recordSize) {
+        uint32_t tempoSalvo;
+        EEPROM.get(i, tempoSalvo);
+        if (tempoSalvo == 0xFFFFFFFF || tempoSalvo == 0) {
+            currentAddress = i; // Encontra o espaço livre correto
+            break;
+        }
+    }
+
     bool forcarMenu = false;
     
     // 1. Toca a animação do chocolate
@@ -168,17 +182,17 @@ void setup() {
 
     // 2. Tela "ChocoLog" separada
     lcd.clear();
-    lcd.setCursor(1, 0); // Centraliza a escrita
+    lcd.setCursor(1, 0); 
     lcd.write((uint8_t)0); 
     lcd.print(" ChocoLog ");
     lcd.write((uint8_t)0); 
-    delayEChecaBotao(1500, forcarMenu); // Aguarda 1.5s permitindo botão
+    delayEChecaBotao(1500, forcarMenu); 
 
     // 3. Tela de aviso do Menu separada
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Hold OK = Menu  ");
-    delayEChecaBotao(1500, forcarMenu); // Aguarda mais 1.5s permitindo botão
+    delayEChecaBotao(1500, forcarMenu); 
 
     byte magicByte = EEPROM.read(ADDR_MAGIC_BYTE);
     
@@ -188,6 +202,8 @@ void setup() {
     } else {
         idioma = EEPROM.read(ADDR_LANGUAGE);
         fuso = EEPROM.read(ADDR_TIMEZONE) - 12; 
+        unidadeTemp = EEPROM.read(ADDR_TEMP_UNIT); // Carrega unidade da memória
+        if (unidadeTemp > 1) unidadeTemp = 0; // Proteção contra lixo de memória
     }
 
     lcd.clear();
@@ -202,24 +218,22 @@ void loop() {
     // ---------------------------------------------------------
     if (alarmeAtivo) {
         digitalWrite(LED_VERDE_PIN, LOW);
-        digitalWrite(LED_VERM_PIN, HIGH); // Mantém o LED de alerta aceso direto
+        digitalWrite(LED_VERM_PIN, HIGH); 
 
         lcd.setCursor(0, 0); lcd.print(telaAlarmeLinha1);
         lcd.setCursor(0, 1); lcd.print(telaAlarmeLinha2);
 
-        // Gera um som contínuo e estridente em 3000 Hz
         tone(BUZZER_PIN, 3000); 
 
-        // Trava de desligamento com filtro para o botão físico
         if (digitalRead(BTN_OK) == LOW) {
             alarmeAtivo = false;
-            noTone(BUZZER_PIN); // Desliga o som imediatamente
+            noTone(BUZZER_PIN); 
             digitalWrite(LED_VERM_PIN, LOW);
             
             lcd.clear();
             lcd.print(txtAlarmeOff[idioma]);
             
-            while(digitalRead(BTN_OK) == LOW) delay(10); // Trava até soltar o botão
+            while(digitalRead(BTN_OK) == LOW) delay(10); 
             delay(1500);
             lcd.clear();
         }
@@ -231,7 +245,6 @@ void loop() {
     // ---------------------------------------------------------
     digitalWrite(LED_VERM_PIN, LOW); 
 
-    // Botão OK entra no Histórico
     if (digitalRead(BTN_OK) == LOW) {
         delay(300); 
         exibirLogsLCD(); 
@@ -242,7 +255,7 @@ void loop() {
     uint32_t unixAjustado = tempoReal.unixtime() + (fuso * 3600);
     DateTime now = DateTime(unixAjustado); 
     
-    float temperaturaAtual = dht.readTemperature();
+    float temperaturaAtual = dht.readTemperature(); // Medição nativa e lógica sempre em C
     float umidadeAtual = dht.readHumidity();
     int leituraLDR = analogRead(LDR_PIN);
     int luminosidadeAtual = map(leituraLDR, 400, 870, 100, 0); 
@@ -250,15 +263,22 @@ void loop() {
     if (now.minute() != lastLoggedMinute) {
         lastLoggedMinute = now.minute();
         
+        // Avaliação de triggers mantida intocada (baseada em Celsius)
         if (temperaturaAtual < trigger_t_min || temperaturaAtual > trigger_t_max || 
             umidadeAtual < trigger_u_min || umidadeAtual > trigger_u_max ||
             luminosidadeAtual > trigger_l_max) {
             
-            salvarLogEEPROM(now.unixtime(), temperaturaAtual, umidadeAtual, luminosidadeAtual);
+            salvarLogEEPROM(tempoReal.unixtime(), temperaturaAtual, umidadeAtual, luminosidadeAtual);
+            
+            // --- CÁLCULO EXCLUSIVO PARA O DISPLAY DE ALARME ---
+            int tempAlarme = (int)temperaturaAtual;
+            if (unidadeTemp == 1) tempAlarme = (int)((temperaturaAtual * 1.8) + 32.0);
+            char charTemp = (unidadeTemp == 0) ? 'C' : 'F';
             
             sprintf(telaAlarmeLinha1, "%s%02d:%02d", txtAlerta[idioma], now.hour(), now.minute());
-            sprintf(telaAlarmeLinha2, "T:%d %s%d %s%d", 
-                    (int)temperaturaAtual, txtUmidTag[idioma], (int)umidadeAtual, txtLuzTag[idioma], luminosidadeAtual);
+            // Atualizado para incluir C ou F dinamicamente colado no número (ex: T:25C)
+            sprintf(telaAlarmeLinha2, "T:%d%c %s%d %s%d", 
+                    tempAlarme, charTemp, txtUmidTag[idioma], (int)umidadeAtual, txtLuzTag[idioma], luminosidadeAtual);
             
             alarmeAtivo = true;
             lcd.clear();
@@ -282,7 +302,14 @@ void loop() {
             lcd.setCursor(0, 1); lcd.print(bufferHora);
         } else {
             lcd.setCursor(0, 0);
-            lcd.print("T:"); lcd.print((int)temperaturaAtual); lcd.print("C");
+            
+            // --- CÁLCULO EXCLUSIVO PARA O DISPLAY NORMAL ---
+            int tempExibir = (int)temperaturaAtual;
+            if (unidadeTemp == 1) tempExibir = (int)((temperaturaAtual * 1.8) + 32.0);
+            char charTemp = (unidadeTemp == 0) ? 'C' : 'F';
+            
+            lcd.print("T:"); lcd.print(tempExibir); lcd.print(charTemp); lcd.print(" ");
+            
             lcd.setCursor(8, 0);
             lcd.print(txtUmidTag[idioma]); lcd.print((int)umidadeAtual); lcd.print("%");
             lcd.setCursor(0, 1);
@@ -297,7 +324,6 @@ void loop() {
 // ==========================================
 
 void executarMenuConfiguracao() {
-    // Trava de liberação: aguarda o usuário soltar o botão OK antes de iniciar
     while (digitalRead(BTN_OK) == LOW) {
         delay(10);
     }
@@ -324,6 +350,19 @@ void executarMenuConfiguracao() {
         if (digitalRead(BTN_OK) == LOW) { confirmado = true; delay(300); }
     }
 
+    // --- NOVO: MENU DE UNIDADE DE TEMPERATURA ---
+    confirmado = false;
+    lcd.clear();
+    while (!confirmado) {
+        lcd.setCursor(0, 0); lcd.print(txtMenuTemp[idioma]);
+        lcd.setCursor(0, 1); 
+        lcd.print("> "); lcd.print(txtUnidade[unidadeTemp]); lcd.print("  ");
+
+        if (digitalRead(BTN_UP) == LOW) { unidadeTemp++; if(unidadeTemp>1) unidadeTemp=0; delay(200); }
+        if (digitalRead(BTN_DOWN) == LOW) { unidadeTemp--; if(unidadeTemp<0) unidadeTemp=1; delay(200); }
+        if (digitalRead(BTN_OK) == LOW) { confirmado = true; delay(300); }
+    }
+
     int ano = ajustarValorDisplay(txtConfigAno[idioma], 2024, 2024, 2050);
     int mes = ajustarValorDisplay(txtConfigMes[idioma], 1, 1, 12);
     int dia = ajustarValorDisplay(txtConfigDia[idioma], 1, 1, 31);
@@ -332,6 +371,7 @@ void executarMenuConfiguracao() {
 
     EEPROM.write(ADDR_LANGUAGE, idioma);
     EEPROM.write(ADDR_TIMEZONE, fuso + 12); 
+    EEPROM.write(ADDR_TEMP_UNIT, unidadeTemp); // Salva unidade na memória
     EEPROM.write(ADDR_MAGIC_BYTE, 0xAA);
 
     DateTime horaLocal(ano, mes, dia, hora, min, 0);
@@ -352,18 +392,18 @@ int ajustarValorDisplay(const char* titulo, int valorInicial, int minVal, int ma
 
         if (digitalRead(BTN_UP) == LOW) {
             valor++; if (valor > maxVal) valor = minVal; 
-            while(digitalRead(BTN_UP) == LOW) delay(10); // Trava até soltar
-            delay(50); // Filtro de ruído físico
+            while(digitalRead(BTN_UP) == LOW) delay(10); 
+            delay(50); 
         }
         if (digitalRead(BTN_DOWN) == LOW) {
             valor--; if (valor < minVal) valor = maxVal; 
-            while(digitalRead(BTN_DOWN) == LOW) delay(10); // Trava até soltar
-            delay(50); // Filtro de ruído físico
+            while(digitalRead(BTN_DOWN) == LOW) delay(10); 
+            delay(50); 
         }
         if (digitalRead(BTN_OK) == LOW) {
             confirmado = true; 
-            while(digitalRead(BTN_OK) == LOW) delay(10); // Trava até soltar
-            delay(50); // Filtro de ruído físico
+            while(digitalRead(BTN_OK) == LOW) delay(10); 
+            delay(50); 
         }
     }
     return valor;
@@ -410,13 +450,19 @@ void exibirLogsLCD() {
         EEPROM.get(enderecosValidos[indexAtual] + 6, humiInt);
         EEPROM.get(enderecosValidos[indexAtual] + 8, luz);
         
-        DateTime dt = DateTime(t);
+        uint32_t tAjustado = t + (fuso * 3600);
+        DateTime dt = DateTime(tAjustado);
         
         char linha1[24]; char linha2[24]; 
         
-        // Nova formatação: L:01 25/12 14:30 (Exatos 16 caracteres)
+        // --- CÁLCULO EXCLUSIVO PARA O DISPLAY DE HISTÓRICO ---
+        int tempExibir = tempInt / 100;
+        if (unidadeTemp == 1) tempExibir = (int)((tempExibir * 1.8) + 32.0);
+        char charTemp = (unidadeTemp == 0) ? 'C' : 'F';
+        
         sprintf(linha1, "L:%02d %02d/%02d %02d:%02d", (indexAtual+1), dt.day(), dt.month(), dt.hour(), dt.minute());
-        sprintf(linha2, "T:%d %s%d %s%d", (tempInt/100), txtUmidTag[idioma], (humiInt/100), txtLuzTag[idioma], luz);
+        // Atualizado para mostrar o C ou F acompanhando o número
+        sprintf(linha2, "T:%d%c %s%d %s%d", tempExibir, charTemp, txtUmidTag[idioma], (humiInt/100), txtLuzTag[idioma], luz);
 
         lcd.setCursor(0, 0); lcd.print(linha1);
         lcd.setCursor(0, 1); lcd.print(linha2);
