@@ -245,7 +245,7 @@ void loop() {
     float temperaturaAtual = dht.readTemperature();
     float umidadeAtual = dht.readHumidity();
     int leituraLDR = analogRead(LDR_PIN);
-    int luminosidadeAtual = map(leituraLDR, 0, 1023, 100, 0); 
+    int luminosidadeAtual = map(leituraLDR, 400, 870, 100, 0); 
 
     if (now.minute() != lastLoggedMinute) {
         lastLoggedMinute = now.minute();
